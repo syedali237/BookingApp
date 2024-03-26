@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function LoginPage() : JSX.Element {
     return (
       <div className="mt-4 grow flex items-center justify-around">
@@ -7,7 +9,12 @@ export default function LoginPage() : JSX.Element {
             <input type="email" placeholder="your@email.com" />
             <input type="password" placeholder="password" />
             <button className="primary">Login</button>
-            <div>Don't have an account yet?</div>
+            <div className="text-center py-2 text-gray-500">
+              Don't have an account yet?
+              <Link to={"/register"} className="underline text-black ml-1">
+                Register Now
+              </Link>
+            </div>
           </form>
         </div>
       </div>
