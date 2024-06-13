@@ -3,9 +3,10 @@ import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from 'dotenv';
 import { log } from "console";
-import User from "../models/Users";
+import User, { IUser } from "../models/Users";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import cookieParser from 'cookie-parser';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -15,6 +16,7 @@ const port: number = 4000;
 const jwtSecret : string = 'fsdasandkajksdsadas';
 
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
@@ -68,12 +70,12 @@ app.post("/login", async (req, res) => {
     const passOK = await bcrypt.compare(password, user.password);
     if (passOK) {
       jwt.sign(
-        { email: user.email, id: user._id },
+        { email: user.email, id: user._id},
         jwtSecret,
         {},
         (err, token) => {
           if (err) throw err;
-          res.cookie("token", token).json("pass OK");
+          res.cookie("token", token).json(user);
         }
       );
     } else {
@@ -83,6 +85,45 @@ app.post("/login", async (req, res) => {
     res.json("not found");
   }
 });
+
+app.get("/profile", (req, res) => {
+  const { token } = req.cookies;
+  if (token) {
+    jwt.verify(token, jwtSecret, {}, async (err, decoded) => {
+      if (err) {
+        console.error('Token verification error:', err);
+        return res.status(401).json({ error: 'Token verification failed' });
+      }
+
+      const userData = decoded as JwtPayload & { id: string };
+      // console.log(userData);
+    
+      if (!userData || !userData.id) {
+        return res.status(400).json({ error: "Invalid token data" });
+      }
+
+      try {
+        const user = await User.findById(userData.id).select("name email _id");
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        const { name, email, _id } = user;
+        return res.json({ name, email, _id });
+      } catch (error) {
+        console.error("Database query failed:", error);
+        return res.status(500).json({ error: "Database query failed", details: error });
+      }
+    });
+  } else {
+    res.json(null);
+  }
+});
+
+app.post("/logout", (req, res) => {
+  res.cookie("token", " ").json(true);
+});
+
 
 app.listen(port, () => {
   console.log(`Backend is listening on port ${port}`);
